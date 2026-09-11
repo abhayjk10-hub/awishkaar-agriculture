@@ -158,22 +158,22 @@ export default function ContactPage() {
             {
               icon: Phone,
               label: t('contact.helpline', language),
-              value: '1800-180-1551',
+              value: '+91 7700037441',
               sub: t('contact.hours', language),
-              href: 'tel:1800-180-1551',
+              href: 'tel:+917700037441',
             },
             {
               icon: Mail,
               label: t('contact.email', language),
-              value: 'support@kisanmitra.gov.in',
+              value: 'param.patel25@sakec.ac.in',
               sub: t('contact.reply', language),
-              href: 'mailto:support@kisanmitra.gov.in',
+              href: 'mailto:param.patel25@sakec.ac.in',
             },
             {
               icon: Clock,
               label: t('contact.response', language),
               value: t('contact.within', language),
-              sub: 'Direct Nodal Officer Review',
+              sub: t('contact.reply', language),
               href: undefined,
             },
           ].map((item) => (
@@ -221,17 +221,17 @@ export default function ContactPage() {
               <div className="pt-2 space-y-2 border-t border-white/10 text-xs text-primary-200">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Verified procurement officers on duty</span>
+                  <span>{t('contact.officersOnDuty', language)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FileCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Direct SMS acknowledgement on your phone</span>
+                  <span>{t('contact.smsAck', language)}</span>
                 </div>
               </div>
             </div>
 
             <a
-              href="tel:1800-180-1551"
+              href="tel:+917700037441"
               className="group flex items-center justify-between text-sm font-semibold bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl px-4 py-3 pt-3 mt-6 transition-all"
             >
               <span>{t('contact.call', language)}</span>

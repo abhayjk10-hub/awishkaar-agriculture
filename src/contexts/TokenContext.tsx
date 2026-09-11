@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
-export type TokenStatus = 'waiting' | 'approaching' | 'now' | null;
+export type TokenStatus = 'waiting' | 'approaching' | 'now' | 'completed' | 'no-show' | null;
 
 export interface TokenData {
   tokenNumber: string;
@@ -12,6 +12,8 @@ export interface TokenData {
   status: TokenStatus;
   estimatedWaitMinutes: number;
   slotTime: string;
+  bookingId?: string;
+  farmerPhone?: string;
 }
 
 interface TokenContextType {
@@ -44,28 +46,39 @@ export function TokenProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Simulate token queue movement (poll every 30s)
+  // Listen to live updates if bookingId exists
   useEffect(() => {
-    if (!token) return;
-    const interval = setInterval(() => {
-      setTokenState((current) => {
-        if (!current) return null;
-        const newAhead = Math.max(0, current.totalAhead - Math.floor(Math.random() * 2));
-        const newWait = Math.max(0, newAhead * 4);
-        const newStatus: TokenStatus =
-          newAhead === 0 ? 'now' : newAhead <= 3 ? 'approaching' : 'waiting';
-        const updated: TokenData = {
-          ...current,
-          totalAhead: newAhead,
-          estimatedWaitMinutes: newWait,
-          status: newStatus,
-        };
-        try { localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
-        return updated;
-      });
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [token]);
+    if (!token?.bookingId) return;
+    
+    // Import dynamically or use event listener
+    const handleUpdate = (e: any) => {
+      const payload = e.detail?.payload || e.data?.payload;
+      if (payload?.bookingId === token.bookingId || payload?.id === token.bookingId) {
+        const newStatus = payload.status;
+        let mappedStatus: TokenStatus = token.status;
+        if (newStatus === 'active') mappedStatus = 'now';
+        else if (newStatus === 'completed') mappedStatus = 'completed';
+        else if (newStatus === 'no-show') mappedStatus = 'no-show';
+        else if (newStatus === 'waiting') mappedStatus = 'waiting';
+
+        setTokenState((prev) => {
+          if (!prev) return null;
+          const updated = {
+            ...prev,
+            status: mappedStatus,
+            totalAhead: mappedStatus === 'now' ? 0 : prev.totalAhead,
+            estimatedWaitMinutes: mappedStatus === 'now' ? 0 : prev.estimatedWaitMinutes,
+          };
+          try { localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      }
+    };
+
+    window.addEventListener('km_sync_event', handleUpdate);
+    return () => window.removeEventListener('km_sync_event', handleUpdate);
+  }, [token?.bookingId]);
+
 
   const setToken = useCallback((data: TokenData | null) => {
     setTokenState(data);

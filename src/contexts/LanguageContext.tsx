@@ -7,7 +7,7 @@ import { t as translateFn } from '@/lib/translations';
 export interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType>({
@@ -19,20 +19,29 @@ const LanguageContext = createContext<LanguageContextType>({
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window === 'undefined') return 'en';
-    const stored = window.localStorage.getItem('km_language') as Language | null;
-    return stored ?? 'en';
+    const stored = (window.localStorage.getItem('km_language') || window.localStorage.getItem('km_lang')) as Language | null;
+    return (stored === 'hi' || stored === 'gu' || stored === 'pa' || stored === 'mr' || stored === 'en') ? stored : 'en';
   });
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.lang = language;
+    }
+  }, [language]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('km_language', lang);
+      window.localStorage.setItem('km_lang', lang);
+      document.documentElement.lang = lang;
+      window.dispatchEvent(new CustomEvent('km_language_change', { detail: lang }));
     }
   }, []);
 
   const t = useCallback(
-    (key: string) => {
-      return translateFn(key, language);
+    (key: string, params?: Record<string, string | number>) => {
+      return translateFn(key, language, params);
     },
     [language]
   );

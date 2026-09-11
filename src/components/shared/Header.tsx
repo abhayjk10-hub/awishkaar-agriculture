@@ -13,15 +13,19 @@ import {
   Calendar,
   LifeBuoy,
   CheckCircle2,
+  Building2,
 } from 'lucide-react';
 import LanguageSelector from './LanguageSelector';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { t } from '@/lib/translations';
+import { getCurrentMandiSession, logoutMandi } from '@/lib/mandi-service';
+import { MandiSession } from '@/types';
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [mandiSession, setMandiSession] = useState<MandiSession | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const pathname = usePathname();
@@ -29,9 +33,34 @@ export default function Header() {
   const { language } = useLanguage();
   const { user, signOut } = useAuth();
 
+  // Listen to Mandi Portal session changes
+  useEffect(() => {
+    const syncMandi = () => {
+      setMandiSession(getCurrentMandiSession());
+    };
+    syncMandi();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', syncMandi);
+      window.addEventListener('km_mandi_sync', syncMandi);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', syncMandi);
+        window.removeEventListener('km_mandi_sync', syncMandi);
+      }
+    };
+  }, [pathname]);
+
+  const isMandiOperator = Boolean(mandiSession);
+  const isFarmer = Boolean(user && !mandiSession);
+
+  // Role-gated navigation links:
+  // - Farmers: slot booking and tracking only (mandi portal hidden/inaccessible)
+  // - Mandi Operators: slot booking, token tracking, and mandi dashboard
   const navLinks = [
     { href: '/', label: t('nav.home', language) },
     { href: '/slot-booking', label: t('nav.slotBooking', language) },
+    ...(isMandiOperator ? [{ href: '/mandi/dashboard', label: t('nav.mandiDashboard', language) }] : []),
     { href: '/contact', label: t('nav.contact', language) },
   ];
 
@@ -55,28 +84,42 @@ export default function Header() {
     setMenuOpen(false);
   }, [pathname]);
 
-  // Extract display name and avatar initials
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    (user?.phone ? `Farmer (${user.phone.slice(-4)})` : user?.email?.split('@')[0]) ||
-    'Registered Farmer';
+  // Extract display name and avatar initials based on active role
+  const displayName = isMandiOperator
+    ? mandiSession?.mandi?.name || t('nav.apmcYard', language)
+    : user?.user_metadata?.full_name ||
+      user?.user_metadata?.name ||
+      (user?.phone ? `${t('nav.farmerAccount', language)} (${user.phone.slice(-4)})` : user?.email?.split('@')[0]) ||
+      t('nav.farmerAccount', language);
 
-  const userIdentifier = user?.phone || user?.email || 'Farmer Account';
+  const userIdentifier = isMandiOperator
+    ? `${mandiSession?.mandi?.code || ''} • ${t('nav.mandiOfficial', language)}`
+    : user?.phone || user?.email || t('nav.farmerAccount', language);
 
-  const initials = displayName
-    .split(' ')
-    .filter(Boolean)
-    .map((n: string) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() || 'F';
+  const initials = isMandiOperator
+    ? 'AP'
+    : displayName
+        .split(' ')
+        .filter(Boolean)
+        .map((n: string) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase() || 'F';
 
   const handleLogout = async () => {
     setProfileDropdownOpen(false);
     setMenuOpen(false);
-    await signOut();
-    router.push('/login');
+    if (isMandiOperator) {
+      logoutMandi();
+      setMandiSession(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('km_mandi_sync'));
+      }
+      router.push('/login?role=mandi');
+    } else {
+      await signOut();
+      router.push('/login?role=farmer');
+    }
   };
 
   return (
@@ -121,7 +164,7 @@ export default function Header() {
             <LanguageSelector />
 
             {/* ── LOGGED IN STATE ── */}
-            {user ? (
+            {user || mandiSession ? (
               <div className="relative" ref={dropdownRef}>
                 {/* Profile Button with Avatar Icon and Name */}
                 <button
@@ -133,7 +176,9 @@ export default function Header() {
                   className="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 border border-white/15 py-1.5 px-3 rounded-full transition-all text-left focus:outline-none focus:ring-2 focus:ring-primary-400"
                 >
                   {/* Avatar Icon */}
-                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-inner ring-2 ring-emerald-400/40 shrink-0">
+                  <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shadow-inner ring-2 shrink-0 ${
+                    isMandiOperator ? 'bg-amber-600 text-amber-950 ring-amber-400/40' : 'bg-emerald-600 text-white ring-emerald-400/40'
+                  }`}>
                     {initials}
                   </div>
 
@@ -143,7 +188,7 @@ export default function Header() {
                       {displayName}
                     </span>
                     <span className="text-[10px] text-primary-300 leading-none">
-                      Online
+                      {isMandiOperator ? t('nav.mandiOfficial', language) : t('nav.online', language)}
                     </span>
                   </div>
 
@@ -165,7 +210,9 @@ export default function Header() {
                     {/* User Info Header */}
                     <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/70 rounded-t-xl">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold text-sm flex items-center justify-center shadow-sm">
+                        <div className={`w-10 h-10 rounded-full font-bold text-sm flex items-center justify-center shadow-sm ${
+                          isMandiOperator ? 'bg-amber-500 text-amber-950' : 'bg-emerald-600 text-white'
+                        }`}>
                           {initials}
                         </div>
                         <div className="overflow-hidden">
@@ -177,14 +224,28 @@ export default function Header() {
                           </p>
                         </div>
                       </div>
-                      <div className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                      <div className={`mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md ${
+                        isMandiOperator ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100/80 text-emerald-700'
+                      }`}>
                         <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        {t('nav.verifiedAccount', language)}
+                        {isMandiOperator ? t('nav.apmcYard', language) : t('nav.verifiedAccount', language)}
                       </div>
                     </div>
 
                     {/* Navigation Actions */}
                     <div className="py-1">
+                      {isMandiOperator ? (
+                        <Link
+                          href="/mandi/dashboard"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-amber-900 bg-amber-50/50 hover:bg-amber-100 transition-colors"
+                          role="menuitem"
+                        >
+                          <Building2 className="w-4 h-4 text-amber-600" />
+                          <span>{t('nav.mandiDashboard', language)}</span>
+                        </Link>
+                      ) : null}
+
                       <Link
                         href="/slot-booking"
                         onClick={() => setProfileDropdownOpen(false)}
@@ -256,9 +317,11 @@ export default function Header() {
         {menuOpen && (
           <div className="md:hidden border-t border-white/10 py-4 space-y-3 animate-in slide-in-from-top-2">
             {/* User credentials if logged in */}
-            {user && (
+            {(user || mandiSession) && (
               <div className="flex items-center gap-3 p-3 bg-white/10 rounded-xl border border-white/10 mb-2">
-                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold text-sm flex items-center justify-center">
+                <div className={`w-10 h-10 rounded-full font-bold text-sm flex items-center justify-center ${
+                  isMandiOperator ? 'bg-amber-500 text-amber-950' : 'bg-emerald-600 text-white'
+                }`}>
                   {initials}
                 </div>
                 <div className="overflow-hidden">
@@ -289,7 +352,7 @@ export default function Header() {
 
             {/* Auth Buttons for Mobile */}
             <div className="pt-2 border-t border-white/10">
-              {user ? (
+              {user || mandiSession ? (
                 <button
                   type="button"
                   onClick={handleLogout}

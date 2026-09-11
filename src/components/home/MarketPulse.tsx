@@ -153,12 +153,17 @@ function MarketChart({ records, sourceUrl, resource, updatedAt }: { records: Mar
 }
 
 export default function MarketPulse() {
+  const { language } = useLanguage();
   const [data, setData] = useState<MarketResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = () => {
     setLoading(true);
-    fetch('/api/market-data').then((response) => response.json() as Promise<MarketResponse>).then(setData).catch(() => setData({ success: false, message: 'Network error while loading market data.' })).finally(() => setLoading(false));
+    fetch('/api/market-data')
+      .then((response) => response.json() as Promise<MarketResponse>)
+      .then(setData)
+      .catch(() => setData({ success: false, message: t('error.network', language) }))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -166,8 +171,34 @@ export default function MarketPulse() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  if (loading) return <section className="market-pulse market-loading"><RefreshCw className="market-spinner" /> Loading official market data...</section>;
-  if (!data?.success || !data.records?.length) return <section className="market-pulse market-unavailable" id="market-pulse"><div className="archive-index">/ 003 — MARKET PULSE</div><h2>Market data, when you need it.</h2><p>{data?.message || 'The government feed returned no listings for this region.'}</p><button type="button" onClick={loadData}><RefreshCw /> Try again</button><small>Source: data.gov.in · Add DATA_GOV_API_KEY to connect the live feed.</small></section>;
+  if (loading) {
+    return (
+      <section className="market-pulse market-loading">
+        <RefreshCw className="market-spinner" /> {t('common.loading', language)}
+      </section>
+    );
+  }
 
-  return <MarketChart records={data.records} sourceUrl={data.sourceUrl} resource={data.resource} updatedAt={data.updatedAt} />;
+  if (!data?.success || !data.records?.length) {
+    return (
+      <section className="market-pulse market-unavailable" id="market-pulse">
+        <div className="archive-index">/ 003 — {t('market.index', language)}</div>
+        <h2>{t('market.heading', language)}</h2>
+        <p>{data?.message || t('market.disclaimer', language)}</p>
+        <button type="button" onClick={loadData}>
+          <RefreshCw /> {t('slot.refreshGps', language)}
+        </button>
+        <small>{t('market.disclaimer', language)}</small>
+      </section>
+    );
+  }
+
+  return (
+    <MarketChart
+      records={data.records}
+      sourceUrl={data.sourceUrl}
+      resource={data.resource}
+      updatedAt={data.updatedAt}
+    />
+  );
 }

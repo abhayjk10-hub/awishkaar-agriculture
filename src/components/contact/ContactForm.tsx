@@ -160,10 +160,10 @@ export default function ContactForm() {
 
         <div className="space-y-2">
           <span className="inline-block text-xs font-semibold uppercase tracking-wider text-primary-600 bg-primary-50 px-3 py-1 rounded-full border border-primary-200">
-            {isGrievance ? 'Grievance Logged' : 'Message Recorded'}
+            {isGrievance ? t('contact.grievance', language) : t('contact.sendMessage', language)}
           </span>
           <h2 className="text-2xl font-bold text-primary-950">
-            {isGrievance ? 'Grievance Registered Successfully' : 'Submission Received'}
+            {isGrievance ? t('contact.grievance', language) : t('contact.title', language)}
           </h2>
           <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
             {msg}
@@ -173,22 +173,22 @@ export default function ContactForm() {
         {/* Submission Details Card */}
         <div className="bg-primary-50/70 border border-primary-200/80 rounded-xl p-4 text-left max-w-md mx-auto space-y-2 text-xs text-primary-900">
           <div className="flex justify-between border-b border-primary-100 pb-2">
-            <span className="text-primary-600 font-medium">Farmer Name:</span>
+            <span className="text-primary-600 font-medium">{t('contact.name', language)}:</span>
             <span className="font-semibold">{submittedData.farmerName}</span>
           </div>
           <div className="flex justify-between border-b border-primary-100 pb-2">
-            <span className="text-primary-600 font-medium">Registered Mobile:</span>
+            <span className="text-primary-600 font-medium">{t('contact.mobile', language)}:</span>
             <span className="font-semibold">+91 {submittedData.mobile}</span>
           </div>
           <div className="flex justify-between border-b border-primary-100 pb-2">
-            <span className="text-primary-600 font-medium">Category:</span>
+            <span className="text-primary-600 font-medium">{t('contact.messageType', language)}:</span>
             <span className="font-semibold">{submittedData.messageType}</span>
           </div>
           <div className="pt-1 flex items-center justify-between text-[11px] text-primary-700">
-            <span>Status:</span>
+            <span>{t('token.liveQueue', language)}:</span>
             <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-              Sent to Support Desk
+              {t('contact.supportDesk', language)}
             </span>
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function ContactForm() {
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-primary-300 hover:bg-primary-50 text-primary-800 font-medium px-5 py-2.5 rounded-xl text-sm transition-colors min-h-[44px]"
           >
             <RotateCcw className="w-4 h-4" />
-            Send Another Message
+            {t('contact.sendMessage', language)}
           </button>
           <Link
             href="/"

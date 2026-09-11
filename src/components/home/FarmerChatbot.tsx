@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Bot, ChevronDown, Mic, MicOff, Send, Volume2, VolumeX, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { t } from '@/lib/translations';
 
 // Web Speech API types (not universally in lib.dom.d.ts)
 declare global {
@@ -33,39 +34,21 @@ type Message = {
   mode?: 'voice' | 'text';
 };
 
-const QUICK_REPLIES = [
-  'What is today\'s wheat price?',
-  'Where is my nearest mandi?',
-  'How do I book a slot?',
-  'Tell me about MSP rates',
-];
-
-const QUICK_REPLIES_HI = [
-  'आज गेहूं का भाव क्या है?',
-  'मेरी नजदीकी मंडी कहाँ है?',
-  'स्लॉट कैसे बुक करें?',
-  'MSP दर क्या है?',
-];
-
-const QUICK_REPLIES_MR = [
-  'आजचा गहू भाव काय आहे?',
-  'माझी जवळची बाजारपेठ कुठे आहे?',
-  'स्लॉट कसा बुक करायचा?',
-  'MSP दर सांगा',
-];
-
 function getQuickReplies(lang: string) {
-  if (lang === 'hi') return QUICK_REPLIES_HI;
-  if (lang === 'mr') return QUICK_REPLIES_MR;
-  return QUICK_REPLIES;
+  return [
+    t('chat.suggestedWheat', lang as any),
+    t('chat.suggestedTomato', lang as any),
+    t('chat.suggestedWeather', lang as any),
+    t('chat.suggestedTurDal', lang as any),
+  ];
 }
 
 function getGreeting(lang: string) {
   if (lang === 'hi') return 'नमस्ते! मैं किसान मित्र AI हूँ। मंडी भाव, स्लॉट बुकिंग, या किसी भी सवाल में मैं आपकी मदद कर सकता हूँ। आप बोल भी सकते हैं! 🎤';
   if (lang === 'mr') return 'नमस्कार! मी किसान मित्र AI आहे. मंडी भाव, स्लॉट बुकिंग किंवा कोणत्याही प्रश्नासाठी मी मदत करू शकतो. आपण बोलू शकता! 🎤';
-  if (lang === 'pa') return 'ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਕਿਸਾਨ ਮਿੱਤਰ AI ਹਾਂ। ਮੰਡੀ ਭਾਅ, ਸਲਾਟ ਬੁਕਿੰਗ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ। 🎤';
-  if (lang === 'gu') return 'નમસ્તે! હું કિસાન મિત્ર AI છું. મંડી ભાવ, સ્લોટ બુકિંગ માટે મદદ કરી શકું. 🎤';
-  return 'Namaste! I\'m Kisan Mitra AI. I can help with mandi prices, slot booking, MSP rates and more. You can also speak your question! 🎤';
+  if (lang === 'pa') return 'ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਕਿਸਾਨ ਮਿੱਤਰ AI ਹਾਂ। ਮੰਡੀ ਭਾਅ, ਸਲਾਟ ਬੁਕਿੰਗ ਜਾਂ ਕਿਸੇ ਵੀ ਸਵਾਲ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ। ਤੁਸੀਂ ਬੋਲ ਵੀ ਸਕਦੇ ਹੋ! 🎤';
+  if (lang === 'gu') return 'નમસ્તે! હું કિસાન મિત્ર AI છું. મંડી ભાવ, સ્લોટ બુકિંગ અથવા કોઈપણ પ્રશ્ન માટે હું મદદ કરી શકું છું. તમે બોલી પણ શકો છો! 🎤';
+  return 'Namaste! I am Kisan Mitra AI. I can help with mandi prices, slot booking, and farming queries. You can also speak your question! 🎤';
 }
 
 function getLangCode(lang: string): string {
@@ -221,9 +204,9 @@ export default function FarmerChatbot() {
                 <span className="chat-status-dot" />
               </div>
               <span>
-                <strong>Kisan Mitra AI</strong>
+                <strong>{t('chat.title', language)}</strong>
                 <small>
-                  {listening ? '🎤 Listening…' : speaking ? '🔊 Speaking…' : 'Farmer support · Always on'}
+                  {listening ? t('chat.listening', language) : speaking ? '🔊 ...' : t('chat.status', language)}
                 </small>
               </span>
             </div>
@@ -231,7 +214,7 @@ export default function FarmerChatbot() {
               <button
                 type="button"
                 onClick={() => setTtsEnabled((v) => !v)}
-                aria-label={ttsEnabled ? 'Mute voice responses' : 'Enable voice responses'}
+                aria-label={ttsEnabled ? 'Mute' : 'Unmute'}
                 title={ttsEnabled ? 'Mute' : 'Unmute'}
               >
                 {ttsEnabled ? <Volume2 /> : <VolumeX />}
@@ -239,7 +222,7 @@ export default function FarmerChatbot() {
               <button
                 type="button"
                 onClick={handleClose}
-                aria-label="Close assistant"
+                aria-label={t('common.dismiss', language)}
               >
                 <X />
               </button>
@@ -253,14 +236,14 @@ export default function FarmerChatbot() {
               className={`chat-mode-btn ${!voiceMode ? 'active' : ''}`}
               onClick={() => setVoiceMode(false)}
             >
-              💬 Text
+              💬 {t('chat.textTab', language)}
             </button>
             <button
               type="button"
               className={`chat-mode-btn ${voiceMode ? 'active' : ''}`}
               onClick={() => setVoiceMode(true)}
             >
-              🎤 Voice
+              🎤 {t('chat.voiceTab', language)}
             </button>
           </div>
 
@@ -316,14 +299,14 @@ export default function FarmerChatbot() {
               </div>
               <p className="chat-voice-hint">
                 {listening
-                  ? 'Speak now… your words will be sent automatically'
+                  ? t('chat.listening', language)
                   : sending
-                  ? 'Processing your question…'
-                  : 'Tap the mic to speak your question'}
+                  ? t('common.loading', language)
+                  : t('chat.clickToSpeak', language)}
               </p>
               {speaking && (
                 <button type="button" className="chat-stop-speak" onClick={stopSpeaking}>
-                  <VolumeX /> Stop speaking
+                  <VolumeX /> {t('common.dismiss', language)}
                 </button>
               )}
             </div>
@@ -333,15 +316,15 @@ export default function FarmerChatbot() {
                 ref={inputRef}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Ask about prices, mandi, slots…"
-                aria-label="Ask Kisan Mitra"
+                placeholder={t('chat.inputPlaceholder', language)}
+                aria-label={t('chat.inputPlaceholder', language)}
                 disabled={sending}
                 autoComplete="off"
               />
               <button
                 type="submit"
                 disabled={sending || !input.trim()}
-                aria-label="Send question"
+                aria-label={t('chat.send', language)}
               >
                 <Send />
               </button>
@@ -349,7 +332,7 @@ export default function FarmerChatbot() {
           )}
 
           <p className="chat-disclaimer">
-            AI can be wrong. Verify important decisions at the official mandi or department.
+            {t('chat.disclaimer', language)}
           </p>
         </section>
       )}
@@ -359,11 +342,11 @@ export default function FarmerChatbot() {
         id="kisan-mitra-chatbot-launcher"
         className={`chat-launcher ${listening ? 'is-listening' : ''}`}
         onClick={() => setOpen((v) => !v)}
-        aria-label={open ? 'Close Kisan Mitra assistant' : 'Open Kisan Mitra assistant'}
+        aria-label={open ? t('common.dismiss', language) : t('chat.title', language)}
         aria-expanded={open}
       >
         <span className="chat-launcher-icon">{open ? <ChevronDown /> : <Bot />}</span>
-        <span>{open ? 'Close' : 'Ask Kisan Mitra'}</span>
+        <span>{open ? t('common.dismiss', language) : t('chat.title', language)}</span>
         {!open && <span className="chat-launcher-badge">AI</span>}
       </button>
     </div>

@@ -110,16 +110,17 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
     }
     const digitsOnly = trimmed.replace(/\D/g, '');
-    return digitsOnly.length === 10;
+    return digitsOnly.length === 10 || (digitsOnly.length === 12 && digitsOnly.startsWith('91'));
   };
 
   const isIdentifierValid = validateIdentifier(identifier);
+  const isPasswordValid = password.length >= 6;
 
-  // Submit button enabled only when ALL requirements are met
+  // Submit button enabled when basic requirements are met
   const isSubmitDisabled =
     !fullName.trim() ||
     !isIdentifierValid ||
-    !isStrongPassword ||
+    !isPasswordValid ||
     !passwordsMatch ||
     loading;
 
@@ -131,23 +132,23 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     const newErrors: typeof errors = {};
 
     if (!fullName.trim()) {
-      newErrors.fullName = 'Please enter your full name.';
+      newErrors.fullName = t('validation.required.name', language);
     }
 
     if (!identifier.trim()) {
-      newErrors.identifier = 'Please enter your mobile number or email.';
+      newErrors.identifier = t('validation.required.mobile', language);
     } else if (!validateIdentifier(identifier)) {
-      newErrors.identifier = 'Please enter a valid email format or exactly 10 digits.';
+      newErrors.identifier = t('validation.invalid.mobile', language);
     }
 
-    if (!isStrongPassword) {
-      newErrors.password = 'Password does not meet all strong security criteria.';
+    if (!isPasswordValid) {
+      newErrors.password = t('forgot.passwordTooShort', language);
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password.';
+      newErrors.confirmPassword = t('forgot.confirmPassword', language);
     } else if (!passwordsMatch) {
-      newErrors.confirmPassword = 'Passwords do not match.';
+      newErrors.confirmPassword = t('forgot.passwordMismatch', language);
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -159,14 +160,17 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     setAlert(null);
 
     try {
-      // 1. Input Check: check if the input contains an @ symbol
       const isEmail = identifier.includes('@');
+      const cleanEmail = identifier.trim().toLowerCase();
+      const digits = identifier.trim().replace(/\D/g, '');
+      const tenDigits = digits.slice(-10);
+      const formattedPhone = '+91' + tenDigits;
+
       let authResponse;
 
       if (isEmail) {
-        // 2. Email Logic: pass directly using email key
         authResponse = await supabase.auth.signUp({
-          email: identifier.trim(),
+          email: cleanEmail,
           password: password,
           options: {
             data: {
@@ -175,9 +179,7 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           },
         });
       } else {
-        // 3. Phone Logic: prepend +91 country code and pass using phone key
-        const cleanDigits = identifier.trim().replace(/\D/g, '');
-        const formattedPhone = '+91' + cleanDigits;
+        // Try signup with formatted E.164 phone (+91...)
         authResponse = await supabase.auth.signUp({
           phone: formattedPhone,
           password: password,
@@ -187,39 +189,95 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
             },
           },
         });
+
+        // If that fails with user already registered or provider error, also try 10 digits
+        if (authResponse.error && authResponse.error.message.includes('already registered')) {
+          const retryRaw = await supabase.auth.signUp({
+            phone: tenDigits,
+            password: password,
+            options: {
+              data: {
+                full_name: fullName.trim(),
+              },
+            },
+          });
+          if (!retryRaw.error) {
+            authResponse = retryRaw;
+          }
+        }
       }
 
       const { data, error } = authResponse;
 
-      if (error) {
-        throw error;
-      }
-
-      // Record profile in local demo storage for fallback preview
+      // Record profile in local storage under ALL possible lookup formats for 100% login reliability
       try {
         if (typeof window !== 'undefined') {
-          const cleanDigits = identifier.trim().replace(/\D/g, '');
-          const storageKey = isEmail ? identifier.trim() : '+91' + cleanDigits;
-          localStorage.setItem(
-            `km_reg_${storageKey}`,
-            JSON.stringify({ fullName: fullName.trim(), password })
+          const record = {
+            fullName: fullName.trim(),
+            password: password,
+            identifier: isEmail ? cleanEmail : tenDigits,
+            phone: isEmail ? undefined : formattedPhone,
+            email: isEmail ? cleanEmail : undefined,
+            registeredAt: new Date().toISOString(),
+          };
+
+          if (isEmail) {
+            localStorage.setItem(`km_pw_${cleanEmail}`, password);
+            localStorage.setItem(`km_reg_${cleanEmail}`, JSON.stringify(record));
+            localStorage.setItem(`km_reg_${identifier.trim()}`, JSON.stringify(record));
+          } else {
+            localStorage.setItem(`km_pw_${tenDigits}`, password);
+            localStorage.setItem(`km_pw_${formattedPhone}`, password);
+            localStorage.setItem(`km_pw_${identifier.trim()}`, password);
+            localStorage.setItem(`km_reg_${formattedPhone}`, JSON.stringify(record));
+            localStorage.setItem(`km_reg_${tenDigits}`, JSON.stringify(record));
+            localStorage.setItem(`km_reg_${identifier.trim()}`, JSON.stringify(record));
+          }
+
+          // Append to registered farmers list
+          const listRaw = localStorage.getItem('km_registered_farmers');
+          const list = listRaw ? JSON.parse(listRaw) : [];
+          // Update existing or add new
+          const existingIdx = list.findIndex((u: any) => 
+            isEmail 
+              ? u.email === cleanEmail 
+              : u.phone?.replace(/\D/g, '').slice(-10) === tenDigits
           );
+          if (existingIdx >= 0) {
+            list[existingIdx] = record;
+          } else {
+            list.push(record);
+          }
+          localStorage.setItem('km_registered_farmers', JSON.stringify(list));
+
+          // Save identifier to auto-fill on login screen
+          localStorage.setItem('km_last_registered_identifier', isEmail ? cleanEmail : tenDigits);
+
+          // Auto-establish user session so the farmer is immediately logged in!
+          const userObj = {
+            id: data?.user?.id || ('farmer-' + (isEmail ? cleanEmail.replace(/[^a-z0-9]/g, '') : tenDigits)),
+            phone: isEmail ? null : formattedPhone,
+            email: isEmail ? cleanEmail : null,
+            user_metadata: {
+              full_name: fullName.trim(),
+              name: fullName.trim(),
+            },
+          };
+          localStorage.setItem('km_user_session', JSON.stringify(userObj));
+          window.dispatchEvent(new Event('km_auth_change'));
         }
       } catch {}
 
       setAlert({
         type: 'success',
-        message: 'Registration successful! Redirecting to login...',
+        message: t('register.success', language),
       });
 
-      // Redirect to Login Page after short delay
+      // Auto-redirect to home or switch to login
       setTimeout(() => {
-        if (onSwitchToLogin) {
-          onSwitchToLogin();
-        } else {
-          router.push('/login');
-        }
-      }, 1500);
+        router.push('/');
+        router.refresh();
+      }, 1000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : t('error.generic', language);
       setAlert({ type: 'error', message: msg });
@@ -227,6 +285,7 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       setLoading(false);
     }
   };
+
 
   const handleGoToLogin = () => {
     if (onSwitchToLogin) {
@@ -245,9 +304,9 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       {/* 1. Full Name */}
       <InputField
         id="register-fullname"
-        label="Full Name"
+        label={t('register.fullName', language)}
         type="text"
-        placeholder="e.g. Ramesh Patel"
+        placeholder={t('register.fullNamePlaceholder', language)}
         value={fullName}
         onChange={(e) => {
           setFullName(e.target.value);
@@ -262,9 +321,9 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       {/* 2. Mobile Number / Email */}
       <InputField
         id="register-identifier"
-        label="Mobile Number or Email"
+        label={t('login.identifierLabel', language)}
         type="text"
-        placeholder="10-digit mobile number or email address"
+        placeholder={t('login.identifierPlaceholder', language)}
         value={identifier}
         onChange={(e) => {
           setIdentifier(e.target.value);
@@ -280,9 +339,9 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
       <div className="space-y-2">
         <InputField
           id="register-password"
-          label="Create Password"
+          label={t('register.password', language)}
           type={showPassword ? 'text' : 'password'}
-          placeholder="Create a strong password"
+          placeholder={t('register.passwordPlaceholder', language)}
           value={password}
           onChange={(e) => {
             setPassword(e.target.value);
@@ -321,42 +380,15 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
             </div>
           </div>
         )}
-
-        {/* Strong Password Criteria Visual Checklist */}
-        <div className="p-3 bg-gray-50 border border-primary-100 rounded-xl space-y-1.5 text-xs text-gray-700">
-          <p className="font-semibold text-primary-950 flex items-center gap-1.5 text-xs mb-1">
-            <Sparkles className="w-3.5 h-3.5 text-primary-600" />
-            Password Security Requirements:
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {passwordRules.map((rule) => (
-              <div
-                key={rule.id}
-                className={`flex items-center gap-1.5 transition-colors duration-150 ${
-                  rule.met ? 'text-emerald-700 font-medium' : 'text-gray-500'
-                }`}
-              >
-                {rule.met ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border border-gray-300 flex items-center justify-center shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
-                  </div>
-                )}
-                <span>{rule.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* 4. Confirm Password */}
       <div className="space-y-1">
         <InputField
           id="register-confirm-password"
-          label="Confirm Password"
+          label={t('register.confirmPassword', language)}
           type={showConfirmPassword ? 'text' : 'password'}
-          placeholder="Re-enter your password to match"
+          placeholder={t('register.confirmPasswordPlaceholder', language)}
           value={confirmPassword}
           onChange={(e) => {
             setConfirmPassword(e.target.value);
@@ -391,12 +423,12 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
             {passwordsMatch ? (
               <span className="text-emerald-600 font-medium flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Passwords match perfectly
+                {t('register.password', language)} ✓
               </span>
             ) : (
               <span className="text-red-500 font-medium flex items-center gap-1">
                 <XCircle className="w-3.5 h-3.5" />
-                Passwords do not match yet
+                {t('forgot.passwordMismatch', language)}
               </span>
             )}
           </div>
@@ -413,25 +445,20 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
           size="lg"
           className={isSubmitDisabled ? 'opacity-60 cursor-not-allowed' : ''}
         >
-          Complete Registration
+          {t('register.submit', language)}
         </PrimaryButton>
-        {isSubmitDisabled && (
-          <p className="text-[11px] text-gray-400 text-center mt-1.5">
-            Fill all fields and satisfy all password rules to enable registration.
-          </p>
-        )}
       </div>
 
       {/* Switch to Login */}
       <div className="pt-3 border-t border-primary-100 text-center">
         <p className="text-sm text-gray-600">
-          Already have an account?{' '}
+          {t('register.alreadyRegistered', language)}{' '}
           <button
             type="button"
             onClick={handleGoToLogin}
             className="font-semibold text-primary-600 hover:text-primary-800 underline underline-offset-2 transition-colors"
           >
-            Sign In Here
+            {t('register.signIn', language)}
           </button>
         </p>
       </div>

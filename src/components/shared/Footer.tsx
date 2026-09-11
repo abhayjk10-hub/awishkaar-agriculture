@@ -50,13 +50,13 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold text-white mb-3 text-sm uppercase tracking-wide">{t('footer.helpline', language)}</h3>
             <div className="space-y-2">
-              <a href="tel:1800-180-1551" className="flex items-center gap-2 text-sm text-primary-300 hover:text-white transition-colors">
+              <a href="tel:+917700037441" className="flex items-center gap-2 text-sm text-primary-300 hover:text-white transition-colors">
                 <Phone className="w-4 h-4" aria-hidden="true" />
-                1800-180-1551
+                +91 7700037441
               </a>
-              <a href="mailto:support@kisanmitra.gov.in" className="flex items-center gap-2 text-sm text-primary-300 hover:text-white transition-colors">
+              <a href="mailto:param.patel25@sakec.ac.in" className="flex items-center gap-2 text-sm text-primary-300 hover:text-white transition-colors">
                 <Mail className="w-4 h-4" aria-hidden="true" />
-                support@kisanmitra.gov.in
+                param.patel25@sakec.ac.in
               </a>
             </div>
           </div>

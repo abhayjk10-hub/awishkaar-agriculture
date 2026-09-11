@@ -15,63 +15,6 @@ type Scheme = {
   category: 'income' | 'insurance' | 'credit' | 'infra' | 'msp';
 };
 
-const SCHEMES: Scheme[] = [
-  {
-    id: 'pm-kisan',
-    tag: 'INCOME SUPPORT',
-    title: 'PM-KISAN',
-    description: 'Pradhan Mantri Kisan Samman Nidhi — ₹6,000 per year direct income support for small and marginal farmers in three equal instalments.',
-    benefit: '₹6,000 / year',
-    href: 'https://pmkisan.gov.in/',
-    category: 'income',
-  },
-  {
-    id: 'pmfby',
-    tag: 'CROP INSURANCE',
-    title: 'PM Fasal Bima Yojana',
-    description: 'Comprehensive crop insurance coverage against natural calamities, pests, and diseases. Very low premium — only 1.5–5% for farmers.',
-    benefit: 'Up to full sum insured',
-    href: 'https://pmfby.gov.in/',
-    category: 'insurance',
-  },
-  {
-    id: 'kcc',
-    tag: 'CREDIT',
-    title: 'Kisan Credit Card',
-    description: 'Short-term credit for crop cultivation, post-harvest expenses, and allied activities at concessional interest rates through banks.',
-    benefit: '4% interest rate',
-    href: 'https://www.nabard.org/content1.aspx?id=593&catid=23&mid=530',
-    category: 'credit',
-  },
-  {
-    id: 'enam',
-    tag: 'MARKET ACCESS',
-    title: 'eNAM — Online Mandi',
-    description: 'National Agriculture Market — unified electronic trading platform for agricultural commodities across APMC mandis to get best prices.',
-    benefit: 'Best price discovery',
-    href: 'https://enam.gov.in/',
-    category: 'msp',
-  },
-  {
-    id: 'pm-kusum',
-    tag: 'SOLAR ENERGY',
-    title: 'PM-KUSUM Scheme',
-    description: 'Solar pump scheme — subsidy for solar-powered irrigation pumps and setting up solar power plants on barren land for income generation.',
-    benefit: '60% subsidy',
-    href: 'https://mnre.gov.in/solar/schemes/',
-    category: 'infra',
-  },
-  {
-    id: 'soil-health',
-    tag: 'SOIL HEALTH',
-    title: 'Soil Health Card',
-    description: 'Free soil testing and personalised nutrient recommendations for your farm to improve crop yield and reduce input costs.',
-    benefit: 'Free testing',
-    href: 'https://soilhealth.dac.gov.in/',
-    category: 'infra',
-  },
-];
-
 const CATEGORY_COLORS: Record<string, string> = {
   income: '#c6ff32',
   insurance: '#79d6ba',
@@ -82,6 +25,63 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function GovernmentSchemes() {
   const { language } = useLanguage();
+
+  const schemes: Scheme[] = [
+    {
+      id: 'pm-kisan',
+      tag: t('schemes.pmKisan.tag', language),
+      title: t('schemes.pmKisan.title', language),
+      description: t('schemes.pmKisan.desc', language),
+      benefit: t('schemes.pmKisan.benefit', language),
+      href: 'https://pmkisan.gov.in/',
+      category: 'income',
+    },
+    {
+      id: 'pmfby',
+      tag: t('schemes.pmfby.tag', language),
+      title: t('schemes.pmfby.title', language),
+      description: t('schemes.pmfby.desc', language),
+      benefit: t('schemes.pmfby.benefit', language),
+      href: 'https://pmfby.gov.in/',
+      category: 'insurance',
+    },
+    {
+      id: 'kcc',
+      tag: t('schemes.kcc.tag', language),
+      title: t('schemes.kcc.title', language),
+      description: t('schemes.kcc.desc', language),
+      benefit: t('schemes.kcc.benefit', language),
+      href: 'https://www.nabard.org/content1.aspx?id=593&catid=23&mid=530',
+      category: 'credit',
+    },
+    {
+      id: 'enam',
+      tag: t('schemes.enam.tag', language),
+      title: t('schemes.enam.title', language),
+      description: t('schemes.enam.desc', language),
+      benefit: t('schemes.enam.benefit', language),
+      href: 'https://enam.gov.in/',
+      category: 'msp',
+    },
+    {
+      id: 'pm-kusum',
+      tag: t('schemes.kusum.tag', language),
+      title: t('schemes.kusum.title', language),
+      description: t('schemes.kusum.desc', language),
+      benefit: t('schemes.kusum.benefit', language),
+      href: 'https://mnre.gov.in/solar/schemes/',
+      category: 'infra',
+    },
+    {
+      id: 'soil-health',
+      tag: t('schemes.soil.tag', language),
+      title: t('schemes.soil.title', language),
+      description: t('schemes.soil.desc', language),
+      benefit: t('schemes.soil.benefit', language),
+      href: 'https://soilhealth.dac.gov.in/',
+      category: 'infra',
+    },
+  ];
 
   return (
     <ScrollReveal className="gov-schemes" id="government-schemes">
@@ -104,7 +104,7 @@ export default function GovernmentSchemes() {
       </div>
 
       <div className="gov-schemes-grid">
-        {SCHEMES.map((scheme) => (
+        {schemes.map((scheme) => (
           <a
             key={scheme.id}
             href={scheme.href}
