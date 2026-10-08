@@ -1,4 +1,4 @@
-# Kisan Mitra — SIH26032
+# Awishkaar 2026
 
 Farmer Procurement Queue & Status System — A Government of India Initiative.
 
